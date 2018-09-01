@@ -184,3 +184,31 @@ func TestMatrixRank(t *testing.T) {
 		})
 	}
 }
+
+func TestSerialize(t *testing.T) {
+	cases := []struct {
+		mtx Matrix
+	}{
+		{
+			Matrix{
+				[]string{"a", "b"},
+				[]int{X, A, B, X}},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run("", func(t *testing.T) {
+			s := c.mtx.Serialize()
+			d := Deserialize(s)
+
+			if !reflect.DeepEqual(c.mtx.Keys, d.Keys) {
+				t.Errorf("%v != %v", d.Keys, c.mtx.Keys)
+			}
+
+			if !reflect.DeepEqual(c.mtx.Ranks, d.Ranks) {
+				t.Errorf("%v != %v", d.Ranks, c.mtx.Ranks)
+			}
+
+		})
+	}
+}

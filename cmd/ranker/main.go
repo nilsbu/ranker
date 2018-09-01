@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -37,13 +38,29 @@ func main() {
 		fmt.Println("need to provide file name")
 	}
 
-	keys, err := parse(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-		return
+	keyfile := os.Args[1]
+	ranksfile := keyfile + "-ranks.json"
+
+	var mtx *rank.Matrix
+
+	if len(os.Args) >= 3 && os.Args[2] == "load" {
+		data, err := ioutil.ReadFile(ranksfile)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		mtx = rank.Deserialize(data)
+	} else {
+		keys, err := parse(os.Args[1])
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		mtx = rank.InitMatrix(keys)
 	}
 
-	mtx := rank.InitMatrix(keys)
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -99,6 +116,7 @@ func main() {
 			return
 		}
 
+		ioutil.WriteFile(ranksfile, mtx.Serialize(), 0644)
 	}
 
 }

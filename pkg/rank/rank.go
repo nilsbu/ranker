@@ -1,6 +1,9 @@
 package rank
 
-import "sort"
+import (
+	"encoding/json"
+	"sort"
+)
 
 const (
 	X int = iota
@@ -11,8 +14,8 @@ const (
 type Position [2]string
 
 type Matrix struct {
-	Keys  []string
-	Ranks []int
+	Keys  []string `json:"keys"`
+	Ranks []int    `json:"ranks"`
 }
 
 func InitMatrix(keys []string) *Matrix {
@@ -126,4 +129,15 @@ func (mtx *Matrix) Rank() (keys []string) {
 	}
 
 	return keys
+}
+
+func (mtx *Matrix) Serialize() []byte {
+	b, _ := json.Marshal(mtx)
+	return b
+}
+
+func Deserialize(bytes []byte) *Matrix {
+	mtx := &Matrix{}
+	json.Unmarshal(bytes, mtx)
+	return mtx
 }
