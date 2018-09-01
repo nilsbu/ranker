@@ -72,12 +72,10 @@ func main() {
 
 			txt, _ := reader.ReadString('\n')
 			switch txt[:len(txt)-1] {
-			case "a":
+			case "k":
 				mtx.Set(target, rank.A)
-			case "b":
+			case "l":
 				mtx.Set(target, rank.B)
-			case "q":
-				return
 			}
 		} else if cycle, ok := mtx.FindCycle(); ok {
 			for i := range cycle {
@@ -85,10 +83,6 @@ func main() {
 			}
 
 			txt, _ := reader.ReadString('\n')
-			if txt[:len(txt)-1] == "q" {
-				return
-			}
-
 			idx, err := strconv.Atoi(txt[:len(txt)-1])
 			if err != nil {
 				fmt.Println(err)
@@ -98,17 +92,7 @@ func main() {
 			target[0] = cycle[idx]
 			target[1] = cycle[(idx+1)%len(cycle)]
 
-			fmt.Printf("'%v' vs '%v':\n", target[0], target[1])
-
-			txt, _ = reader.ReadString('\n')
-			switch txt[:len(txt)-1] {
-			case "a":
-				mtx.Set(target, rank.A)
-			case "b":
-				mtx.Set(target, rank.B)
-			case "q":
-				return
-			}
+			mtx.Set(target, rank.B)
 		} else {
 			for i, key := range mtx.Rank() {
 				fmt.Printf("%v: %v\n", i, key)
