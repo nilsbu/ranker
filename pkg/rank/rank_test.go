@@ -185,6 +185,117 @@ func TestMatrixRank(t *testing.T) {
 	}
 }
 
+func TestMatrixSetImplied(t *testing.T) {
+	cases := []struct {
+		raw    *Matrix
+		filled *Matrix
+		ok     bool
+	}{
+		{
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, AA, X, X,
+					BB, X, AA, X,
+					X, BB, X, AA,
+					X, X, BB, X,
+				}},
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, AA, IA, IA,
+					BB, X, AA, IA,
+					IB, BB, X, AA,
+					IB, IB, BB, X,
+				}},
+			true,
+		},
+		{
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, AA, X, X,
+					BB, X, AA, X,
+					X, BB, X, A,
+					X, X, B, X,
+				}},
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, AA, IA, X,
+					BB, X, AA, X,
+					IB, BB, X, A,
+					X, X, B, X,
+				}},
+			true,
+		},
+		{
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, AA, BB, X,
+					BB, X, AA, X,
+					AA, BB, X, X,
+					X, X, X, X,
+				}},
+			&Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{}},
+			false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run("", func(t *testing.T) {
+			filled, ok := c.raw.SetImplied()
+
+			if ok != c.ok {
+				t.Errorf("%v != %v", c.ok, ok)
+			}
+
+			if ok {
+				if !reflect.DeepEqual(c.filled.Keys, filled.Keys) {
+					t.Errorf("%v != %v", c.filled.Keys, filled.Keys)
+				}
+
+				if !reflect.DeepEqual(c.filled.Ranks, filled.Ranks) {
+					t.Errorf("%v != %v", c.filled.Ranks, filled.Ranks)
+				}
+			}
+		})
+	}
+}
+
+func TestCountFree(t *testing.T) {
+	cases := []struct {
+		mtx  *Matrix
+		free int
+	}{
+		{
+			&Matrix{
+				[]string{"a", "b", "c"},
+				[]int{X, A, A, B, X, B, B, A, X}},
+			0,
+		},
+		{
+			&Matrix{
+				[]string{"a", "b", "c"},
+				[]int{X, A, X, B, X, X, X, X, X}},
+			2,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run("", func(t *testing.T) {
+			free := c.mtx.CountFree()
+
+			if c.free != free {
+				t.Fatalf("%v != %v", c.free, free)
+			}
+		})
+	}
+}
+
 func TestSerialize(t *testing.T) {
 	cases := []struct {
 		mtx Matrix

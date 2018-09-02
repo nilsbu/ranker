@@ -9,6 +9,10 @@ const (
 	X int = iota
 	A
 	B
+	AA
+	BB
+	IA
+	IB
 )
 
 type Position [2]string
@@ -54,8 +58,30 @@ func (mtx *Matrix) Set(pos Position, value int) {
 		}
 	}
 
+	mtx.set(x, y, value)
+}
+
+func (mtx *Matrix) set(x, y int, value int) {
+	var other int
+	switch value {
+	case X:
+		other = X
+	case A:
+		other = B
+	case B:
+		other = A
+	case AA:
+		other = BB
+	case BB:
+		other = AA
+	case IA:
+		other = IB
+	case IB:
+		other = IA
+	}
+
 	mtx.Ranks[y*len(mtx.Keys)+x] = value
-	mtx.Ranks[x*len(mtx.Keys)+y] = 3 - value
+	mtx.Ranks[x*len(mtx.Keys)+y] = other
 }
 
 func (mtx *Matrix) FindCycle() (cycle []string, ok bool) {
@@ -78,7 +104,8 @@ func findCycle(ranks []int, visited []bool, i int) (indices []int, ok bool) {
 	visited[i] = true
 
 	for j := range visited {
-		if ranks[i*len(visited)+j] == A {
+		r := ranks[i*len(visited)+j]
+		if r == A || r == AA || r == IA {
 			if indices, ok = findCycle(ranks, visited, j); ok {
 				return append(indices, i), true
 			}
@@ -114,7 +141,8 @@ func (mtx *Matrix) Rank() (keys []string) {
 	for i := range mtx.Keys {
 		scores[i].k = mtx.Keys[i]
 		for j := range mtx.Keys {
-			if mtx.Ranks[i*len(mtx.Keys)+j] == A {
+			r := mtx.Ranks[i*len(mtx.Keys)+j]
+			if r == A || r == AA || r == IA {
 				scores[i].s++
 			}
 		}
@@ -129,6 +157,62 @@ func (mtx *Matrix) Rank() (keys []string) {
 	}
 
 	return keys
+}
+
+func (mtx *Matrix) SetImplied() (filled *Matrix, ok bool) {
+	filled = &Matrix{
+		Keys:  mtx.Keys,
+		Ranks: make([]int, len(mtx.Ranks)),
+	}
+
+	for i, v := range mtx.Ranks {
+		filled.Ranks[i] = v
+	}
+
+	for j := range mtx.Keys {
+		if !filled.fillImplied([]int{}, j) {
+			return filled, false
+		}
+	}
+
+	return filled, true
+}
+
+func (mtx *Matrix) fillImplied(visited []int, i int) (ok bool) {
+	for _, idx := range visited {
+		r := mtx.Ranks[idx*len(mtx.Keys)+i]
+		if r == X {
+			mtx.set(i, idx, IA)
+		} else if r == B || r == BB || r == IB {
+			return false
+		}
+	}
+
+	visited = append(visited, i)
+
+	for j := range mtx.Keys {
+		r := mtx.Ranks[i*len(mtx.Keys)+j]
+		if r == AA {
+			if !mtx.fillImplied(visited, j) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (mtx *Matrix) CountFree() int {
+	count := 0
+	for i := 0; i < len(mtx.Keys); i++ {
+		for j := i + 1; j < len(mtx.Keys); j++ {
+			if mtx.Ranks[i*len(mtx.Keys)+j] == X {
+				count++
+			}
+		}
+	}
+
+	return count
 }
 
 func (mtx *Matrix) Serialize() []byte {
