@@ -33,6 +33,12 @@ func TestMatrixFindFree(t *testing.T) {
 		{
 			Matrix{
 				[]string{"a", "b"},
+				[]int{X, X, X, X}},
+			Position{"a", "b"}, true,
+		},
+		{
+			Matrix{
+				[]string{"a", "b"},
 				[]int{X, A, B, X}},
 			Position{}, false,
 		},
@@ -51,8 +57,46 @@ func TestMatrixFindFree(t *testing.T) {
 		{
 			Matrix{
 				[]string{"a", "b", "c", "d"},
-				[]int{X, A, A, A, B, X, A, A, B, B, X, A, B, B, B, X}},
+				[]int{
+					X, A, A, A,
+					B, X, A, A,
+					B, B, X, A,
+					B, B, B, X}},
 			Position{}, false,
+		},
+		{
+			Matrix{
+				[]string{"a", "b", "c", "d"},
+				[]int{
+					X, X, X, X,
+					X, X, BB, IB,
+					X, AA, X, BB,
+					X, IA, AA, X}},
+			Position{"a", "d"}, true,
+		},
+		{
+			Matrix{
+				[]string{"a", "b", "c", "d", "e"},
+				[]int{
+					X, BB, X, X, X,
+					AA, X, X, X, X,
+					X, X, X, X, X,
+					X, X, X, X, X,
+					X, X, X, X, X,
+				}},
+			Position{"c", "a"}, true,
+		},
+		{
+			Matrix{
+				[]string{"a", "b", "c", "d", "e"},
+				[]int{
+					X, AA, A, X, X,
+					BB, X, X, X, X,
+					B, X, X, X, X,
+					X, X, X, X, X,
+					X, X, X, X, X,
+				}},
+			Position{"b", "c"}, true,
 		},
 	}
 
@@ -67,6 +111,9 @@ func TestMatrixFindFree(t *testing.T) {
 			if hasFree {
 				if c.free[0] != free[0] {
 					t.Errorf("first key: %v != %v", c.free[0], free[0])
+				}
+				if c.free[1] != free[1] {
+					t.Errorf("secind key: %v != %v", c.free[1], free[1])
 				}
 			}
 		})
@@ -85,6 +132,12 @@ func TestMatrixSet(t *testing.T) {
 				[]string{"a", "b", "c"},
 				[]int{X, A, X, B, X, X, X, X, X}},
 			Position{"b", "c"}, A, B, 5, 7,
+		},
+		{
+			Matrix{
+				[]string{"a", "b", "c"},
+				[]int{X, A, X, B, X, X, X, X, X}},
+			Position{"a", "b"}, X, X, 1, 4,
 		},
 	}
 
@@ -266,7 +319,7 @@ func TestMatrixSetImplied(t *testing.T) {
 	}
 }
 
-func TestCountFree(t *testing.T) {
+func TestMatrixCountFree(t *testing.T) {
 	cases := []struct {
 		mtx  *Matrix
 		free int
@@ -296,7 +349,33 @@ func TestCountFree(t *testing.T) {
 	}
 }
 
-func TestSerialize(t *testing.T) {
+func TestMatrixClearImplied(t *testing.T) {
+	cases := []struct {
+		pre  *Matrix
+		post *Matrix
+	}{
+		{
+			&Matrix{
+				[]string{"a", "b", "c"},
+				[]int{X, AA, IA, BB, X, AA, IB, BB, X}},
+			&Matrix{
+				[]string{"a", "b", "c"},
+				[]int{X, AA, X, BB, X, AA, X, BB, X}},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run("", func(t *testing.T) {
+			post := c.pre.ClearImplied()
+
+			if !reflect.DeepEqual(c.post.Ranks, post.Ranks) {
+				t.Fatalf("%v != %v", c.post.Ranks, post.Ranks)
+			}
+		})
+	}
+}
+
+func TestMatrixSerialize(t *testing.T) {
 	cases := []struct {
 		mtx Matrix
 	}{

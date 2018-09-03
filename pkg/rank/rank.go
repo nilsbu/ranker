@@ -15,6 +15,7 @@ const (
 	IB
 )
 
+type indices [2]int
 type Position [2]string
 
 type Matrix struct {
@@ -29,17 +30,93 @@ func InitMatrix(keys []string) *Matrix {
 	}
 }
 
+func (mtx *Matrix) at(x, y int) int {
+	return mtx.Ranks[y*len(mtx.Keys)+x]
+}
+
 func (mtx *Matrix) FindFree() (Position, bool) {
+	type res struct {
+		idx indices
+		n   int
+	}
+
+	if pos, ok := mtx.findFree(); ok {
+		impr := []res{{pos, 0}}
+		if best, n, ok := mtx.getOptimalFreeSpace(pos, pos, BB); ok {
+			impr = append(impr, res{best, n})
+		}
+		pos = indices{pos[1], pos[0]}
+		if best, n, ok := mtx.getOptimalFreeSpace(pos, pos, AA); ok {
+			impr = append(impr, res{best, n})
+		}
+
+		idx := 0
+		n := 0
+		for i := range impr {
+			if n < impr[i].n {
+				idx = i
+				n = impr[i].n
+			}
+		}
+
+		pos = impr[idx].idx
+		return Position{mtx.Keys[pos[0]], mtx.Keys[pos[1]]}, true
+	} else {
+		return Position{}, false
+	}
+}
+
+func (mtx *Matrix) findFree() (indices, bool) {
 	for i := 1; i < len(mtx.Keys); i++ {
 		for j := 0; i+j < len(mtx.Keys); j++ {
 			y, x := j, i+j
 			if mtx.Ranks[y*len(mtx.Keys)+x] == X {
-				return Position{mtx.Keys[y], mtx.Keys[x]}, true
+				return indices{y, x}, true
 			}
 		}
 	}
 
-	return Position{}, false
+	return indices{}, false
+}
+
+func (mtx *Matrix) getOptimalFreeSpace(
+	origin, idcs indices,
+	dir int,
+) (best indices, n int, ok bool) {
+	type res struct {
+		idx indices
+		n   int
+	}
+
+	impr := []res{}
+
+	y := idcs[1]
+	for x := 0; x < len(mtx.Keys); x++ {
+		if mtx.at(x, y) == dir {
+			if best, n, ok = mtx.getOptimalFreeSpace(origin, indices{y, x}, dir); ok {
+				impr = append(impr, res{best, n + 1})
+			}
+		}
+	}
+
+	if mtx.at(origin[0], idcs[1]) == X {
+		impr = append(impr, res{idcs, 0})
+	}
+
+	if len(impr) == 0 {
+		return indices{}, 0, false
+	}
+
+	idx := 0
+	cnt := 0
+	for i := range impr {
+		if cnt < impr[i].n {
+			idx = i
+			cnt = impr[i].n
+		}
+	}
+
+	return indices{origin[0], impr[idx].idx[1]}, impr[idx].n, true
 }
 
 func (mtx *Matrix) Set(pos Position, value int) {
@@ -63,21 +140,10 @@ func (mtx *Matrix) Set(pos Position, value int) {
 
 func (mtx *Matrix) set(x, y int, value int) {
 	var other int
-	switch value {
-	case X:
-		other = X
-	case A:
-		other = B
-	case B:
-		other = A
-	case AA:
-		other = BB
-	case BB:
-		other = AA
-	case IA:
-		other = IB
-	case IB:
-		other = IA
+	if value == X {
+		other = x
+	} else {
+		other = (value-1)/2*2 + value%2 + 1
 	}
 
 	mtx.Ranks[y*len(mtx.Keys)+x] = value
@@ -86,9 +152,10 @@ func (mtx *Matrix) set(x, y int, value int) {
 
 func (mtx *Matrix) FindCycle() (cycle []string, ok bool) {
 	visited := make([]bool, len(mtx.Keys))
+	recStack := make([]bool, len(mtx.Keys))
 
 	for j := range visited {
-		if indices, ok := findCycle(mtx.Ranks, visited, j); ok {
+		if indices, ok := findCycle(mtx.Ranks, visited, recStack, j); ok {
 			return transcribe(indices, mtx.Keys), true
 		}
 	}
@@ -96,23 +163,31 @@ func (mtx *Matrix) FindCycle() (cycle []string, ok bool) {
 	return []string{}, false
 }
 
-func findCycle(ranks []int, visited []bool, i int) (indices []int, ok bool) {
+func findCycle(ranks []int, visited, recStack []bool, i int) (indices []int, ok bool) {
 	if visited[i] {
-		return []int{i}, true
+		recStack[i] = false
+		return []int{}, false
 	}
 
 	visited[i] = true
+	recStack[i] = true
 
 	for j := range visited {
 		r := ranks[i*len(visited)+j]
 		if r == A || r == AA || r == IA {
-			if indices, ok = findCycle(ranks, visited, j); ok {
-				return append(indices, i), true
+			if !visited[j] {
+				if indices, ok = findCycle(ranks, visited, recStack, j); ok {
+					return append(indices, i), true
+				}
+			}
+
+			if recStack[j] {
+				return []int{j, i}, true
 			}
 		}
 	}
 
-	visited[i] = false
+	recStack[i] = false
 
 	return []int{}, false
 }
@@ -213,6 +288,23 @@ func (mtx *Matrix) CountFree() int {
 	}
 
 	return count
+}
+
+func (mtx *Matrix) ClearImplied() *Matrix {
+	post := &Matrix{
+		Keys:  mtx.Keys,
+		Ranks: make([]int, len(mtx.Ranks)),
+	}
+
+	for i, v := range mtx.Ranks {
+		if v == IA || v == IB {
+			post.Ranks[i] = X
+		} else {
+			post.Ranks[i] = v
+		}
+	}
+
+	return post
 }
 
 func (mtx *Matrix) Serialize() []byte {

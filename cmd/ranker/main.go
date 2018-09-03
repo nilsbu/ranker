@@ -63,39 +63,18 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 
+	mtx = mtx.ClearImplied()
+	if filled, ok := mtx.SetImplied(); ok {
+		mtx = filled
+	} else {
+		fmt.Println("conflict")
+		return
+	}
+
 	for {
 		fmt.Printf("free spaces: %v\n", mtx.CountFree())
 
 		target := rank.Position{}
-
-		if pos, ok := mtx.FindFree(); ok {
-			target = pos
-			fmt.Printf("'%v' vs '%v':\n", target[0], target[1])
-
-			txt, _ := reader.ReadString('\n')
-			switch txt[:len(txt)-1] {
-			case "k":
-				mtx.Set(target, rank.A)
-			case "l":
-				mtx.Set(target, rank.B)
-			case "i":
-				mtx.Set(target, rank.AA)
-			case "o":
-				mtx.Set(target, rank.BB)
-			}
-
-			if filled, ok := mtx.SetImplied(); ok {
-				mtx = filled
-			} else {
-				fmt.Println("conflict")
-				mtx.Set(target, rank.X)
-			}
-		} else {
-			for i, key := range mtx.Rank() {
-				fmt.Printf("%v: %v\n", i, key)
-			}
-			return
-		}
 
 		if cycle, ok := mtx.FindCycle(); ok {
 			for i := range cycle {
@@ -113,6 +92,35 @@ func main() {
 			target[1] = cycle[(idx+1)%len(cycle)]
 
 			mtx.Set(target, rank.B)
+			mtx = mtx.ClearImplied()
+
+		} else if pos, ok := mtx.FindFree(); ok {
+			target = pos
+			fmt.Printf("'%v' vs '%v':\n", target[0], target[1])
+
+			txt, _ := reader.ReadString('\n')
+			switch txt[:len(txt)-1] {
+			case "k":
+				mtx.Set(target, rank.A)
+			case "l":
+				mtx.Set(target, rank.B)
+			case "i":
+				mtx.Set(target, rank.AA)
+			case "o":
+				mtx.Set(target, rank.BB)
+			}
+		} else {
+			for i, key := range mtx.Rank() {
+				fmt.Printf("%v: %v\n", i, key)
+			}
+			return
+		}
+
+		if filled, ok := mtx.SetImplied(); ok {
+			mtx = filled
+		} else {
+			fmt.Println("conflict")
+			mtx.Set(target, rank.X)
 		}
 
 		ioutil.WriteFile(ranksfile, mtx.Serialize(), 0644)
